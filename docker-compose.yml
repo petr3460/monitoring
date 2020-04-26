@@ -1,0 +1,55 @@
+version: '3'
+
+services:
+  web:
+    env_file:
+      - local.env
+    build: .
+    ports:
+      - "8000:80"
+    links:
+      - influxdb
+      - postgresdb
+      - migration
+    networks:
+      - mynetwork
+
+  influxdb:
+    image: influxdb:latest
+    env_file:
+      - local.env
+    ports:
+      - "8083:8083"
+      - "8086:8086"
+      - "8090:8090"
+    networks:
+      - mynetwork
+
+  postgresdb:
+    image: postgres
+    env_file:
+      - local.env
+    ports:
+      - "5432:5432"
+    networks:
+      - mynetwork
+
+  migration:
+      build: .
+      env_file:
+        - local.env
+      command: python /opt/app/manage.py migrate
+      links:
+        - postgresdb
+      networks:
+        - mynetwork
+      restart:
+        on-failure
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:5432"]
+        interval: 8s
+        timeout: 5s
+        retries: 3
+
+networks:
+    mynetwork:
